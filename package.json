@@ -2,7 +2,7 @@
   "name": "lets-go-to-learn",
   "version": "1.0.0",
   "description": "MCQ Portal UKG to Class 10",
-  "main": "server.js",  
+  "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
