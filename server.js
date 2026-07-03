@@ -5,23 +5,16 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DB_FILE = path.join(__dirname, 'db.json');
+const DB_FILE = path.join('/tmp', 'db.json');
 
 function readDB() {
   try {
-    return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-  } catch (e) {
-    return null;
-  }
-}
-
-function writeDB(db) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
-}
-
-// Initialize DB
-if (!fs.existsSync(DB_FILE)) {
-  const defaultDB = {
+    if (fs.existsSync(DB_FILE)) {
+      return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    }
+  } catch (e) {}
+  
+  return {
     teacher: { username: 'teacher', password: 'teacher123', name: 'Teacher' },
     students: [],
     classes: ['UKG','1','2','3','4','5','6','7','8','9','10'],
@@ -31,14 +24,16 @@ if (!fs.existsSync(DB_FILE)) {
     results: [],
     studentCounter: 0
   };
-  writeDB(defaultDB);
+}
+
+function writeDB(db) {
+  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 }
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ---------- LOGIN ----------
 app.post('/api/login', (req, res) => {
   const { username, password, role } = req.body;
   const db = readDB();
@@ -48,37 +43,23 @@ app.post('/api/login', (req, res) => {
     }
   } else {
     const student = db.students.find(s => s.username === username && s.password === password);
-    if (student) {
-      return res.json({ success: true, role: 'student', name: student.name, class: student.class });
-    }
+    if (student) return res.json({ success: true, role: 'student', name: student.name, class: student.class });
   }
   res.json({ success: false, message: 'Invalid credentials' });
 });
 
-// Guest
 app.post('/api/guest', (req, res) => {
   const { name, class: cls } = req.body;
   if (!name) return res.json({ success: false });
   res.json({ success: true, name, class: cls, guestId: 'guest_' + Date.now() });
 });
 
-// ---------- QUESTIONS ----------
 app.post('/api/questions', (req, res) => {
   const db = readDB();
-  const { class: cls, subject, question, optionA, optionB, optionC, optionD, correctAnswer } = req.body;
-  const newQ = {
-    id: Date.now(),
-    class: cls,
-    subject,
-    question,
-    optionA, optionB, optionC, optionD,
-    correctAnswer,
-    type: 'manual',
-    createdAt: new Date().toISOString()
-  };
-  db.questions.push(newQ);
+  const q = { id: Date.now(), ...req.body, type: req.body.type || 'manual', createdAt: new Date().toISOString() };
+  db.questions.push(q);
   writeDB(db);
-  res.json({ success: true, question: newQ });
+  res.json({ success: true, question: q });
 });
 
 app.get('/api/questions', (req, res) => {
@@ -89,63 +70,46 @@ app.get('/api/questions', (req, res) => {
 
 app.delete('/api/questions/:id', (req, res) => {
   const db = readDB();
-  const id = parseInt(req.params.id);
-  db.questions = db.questions.filter(q => q.id !== id);
-  db.tests.forEach(t => t.questionIds = t.questionIds.filter(qid => qid !== id));
+  db.questions = db.questions.filter(q => q.id !== parseInt(req.params.id));
   writeDB(db);
   res.json({ success: true });
 });
 
-// PDF to MCQ
 app.post('/api/pdf-to-mcq', (req, res) => {
   const { text, class: cls, subject, numQuestions, testName } = req.body;
-  if (!text || !cls || !subject) return res.json({ success: false, message: 'Missing fields' });
+  if (!text || !cls || !subject) return res.json({ success: false });
   const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 30);
   if (sentences.length < 3) return res.json({ success: false, message: 'Need more text' });
-  const generated = [];
-  const used = new Set();
+  const db = readDB();
+  const generated = [], used = new Set();
   const n = Math.min(numQuestions || 5, sentences.length);
   while (generated.length < n) {
     const idx = Math.floor(Math.random() * sentences.length);
     if (used.has(idx)) continue;
     used.add(idx);
-    const sentence = sentences[idx].trim();
-    const words = sentence.split(/\s+/);
+    const words = sentences[idx].trim().split(/\s+/);
     if (words.length < 6) continue;
     let keyword = words.find(w => w.length > 3 && /^[A-Z]/.test(w)) || words.reduce((a,b) => a.length > b.length ? a : b);
     keyword = keyword.replace(/[^a-zA-Z]/g, '');
     if (keyword.length < 3) continue;
-    const question = sentence.replace(new RegExp(keyword, 'i'), '________');
-    const wrongOpts = words.filter(w => w !== keyword && w.length > 2).slice(0,3).map(w => w.replace(/[^a-zA-Z]/g, ''));
-    while (wrongOpts.length < 3) wrongOpts.push('Option ' + (wrongOpts.length+1));
-    const options = [keyword, ...wrongOpts].sort(() => Math.random() - 0.5);
-    const correctIndex = options.indexOf(keyword);
-    generated.push({
-      id: Date.now() + generated.length,
-      class: cls, subject, question,
-      optionA: options[0], optionB: options[1], optionC: options[2], optionD: options[3],
-      correctAnswer: ['a','b','c','d'][correctIndex],
-      type: 'pdf_generated', createdAt: new Date().toISOString()
-    });
+    const question = sentences[idx].replace(new RegExp(keyword, 'i'), '________');
+    const wrong = words.filter(w => w !== keyword && w.length > 2).slice(0,3).map(w => w.replace(/[^a-zA-Z]/g, ''));
+    while (wrong.length < 3) wrong.push('Option ' + (wrong.length+1));
+    const options = [keyword, ...wrong].sort(() => Math.random() - 0.5);
+    const ci = options.indexOf(keyword);
+    const q = { id: Date.now() + generated.length, class: cls, subject, question, optionA: options[0], optionB: options[1], optionC: options[2], optionD: options[3], correctAnswer: ['a','b','c','d'][ci], type: 'pdf_generated' };
+    db.questions.push(q);
+    generated.push(q);
   }
-  const db = readDB();
-  db.questions.push(...generated);
-  const test = {
-    id: Date.now() + 10000,
-    name: testName || `${subject} - PDF Test`,
-    class: cls, subject,
-    questionIds: generated.map(q => q.id)
-  };
+  const test = { id: Date.now() + 10000, name: testName || subject + ' - PDF Test', class: cls, subject, questionIds: generated.map(q => q.id) };
   db.tests.push(test);
   writeDB(db);
   res.json({ success: true, questions: generated, test });
 });
 
-// ---------- TESTS ----------
 app.post('/api/tests', (req, res) => {
   const db = readDB();
-  const { class: cls, subject, name, questionIds } = req.body;
-  db.tests.push({ id: Date.now(), class: cls, subject, name, questionIds });
+  db.tests.push({ id: Date.now(), ...req.body });
   writeDB(db);
   res.json({ success: true });
 });
@@ -163,14 +127,14 @@ app.delete('/api/tests/:id', (req, res) => {
   res.json({ success: true });
 });
 
-// ---------- STUDENTS ----------
 app.post('/api/students', (req, res) => {
   const db = readDB();
   const { name, class: cls, password } = req.body;
   db.studentCounter = (db.studentCounter || 0) + 1;
-  db.students.push({ name, username: 'student' + db.studentCounter, password, class: cls });
+  const student = { name, username: 'student' + db.studentCounter, password, class: cls };
+  db.students.push(student);
   writeDB(db);
-  res.json({ success: true, username: 'student' + db.studentCounter, password });
+  res.json({ success: true, username: student.username, password });
 });
 
 app.get('/api/students', (req, res) => res.json(readDB().students));
@@ -182,7 +146,6 @@ app.delete('/api/students/:index', (req, res) => {
   res.json({ success: true });
 });
 
-// ---------- RESULTS ----------
 app.post('/api/results', (req, res) => {
   const db = readDB();
   db.results.push({ ...req.body, date: new Date().toISOString() });
@@ -192,8 +155,6 @@ app.post('/api/results', (req, res) => {
 
 app.get('/api/results', (req, res) => res.json(readDB().results));
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-app.listen(PORT, () => console.log(`Let's Go to Learn running on port ${PORT}`));
+app.listen(PORT, () => console.log('Lets Go to Learn running on port ' + PORT));
