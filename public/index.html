@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Let's Go to Learn - MCQ Portal</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-light: #eef2ff;
+            --success: #059669;
+            --danger: #dc2626;
+            --warning: #d97706;
+            --bg: #f3f4f6;
+            --white: #fff;
+            --text: #1f2937;
+            --gray: #6b7280;
+            --border: #e5e7eb;
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+            --radius: 12px;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+        .container { max-width: 1100px; margin:0 auto; padding:20px; }
+        .login-screen { display:flex; justify-content:center; align-items:center; min-height:100vh; background:linear-gradient(135deg, #667eea, #764ba2); }
+        .login-card { background:var(--white); border-radius:20px; padding:40px; box-shadow:0 20px 60px rgba(0,0,0,0.3); width:450px; max-width:90%; }
+        .login-card h1 { text-align:center; color:var(--primary); margin-bottom:8px; }
+        .subtitle { text-align:center; color:var(--gray); margin-bottom:24px; }
+        .role-select { display:flex; gap:10px; margin-bottom:20px; }
+        .role-btn { flex:1; padding:12px; border:2px solid var(--border); border-radius:10px; background:white; cursor:pointer; font-weight:600; transition:all 0.3s; }
+        .role-btn:hover, .role-btn.active { border-color:var(--primary); background:var(--primary-light); color:var(--primary); }
+        input, select, textarea { width:100%; padding:12px; border:2px solid var(--border); border-radius:10px; font-size:16px; margin-bottom:12px; }
+        .btn { width:100%; padding:14px; background:var(--primary); color:white; border:none; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; }
+        .btn:hover { background:#4338ca; }
+        .btn-sm { padding:8px 16px; font-size:13px; width:auto; border-radius:8px; }
+        .btn-danger { background:var(--danger); }
+        .btn-success { background:var(--success); }
+        .btn-outline { background:transparent; border:2px solid var(--primary); color:var(--primary); }
+        .header { background:var(--white); box-shadow:var(--shadow); padding:16px 24px; display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; border-radius:var(--radius); flex-wrap:wrap; gap:12px; }
+        .header h2 { color:var(--primary); }
+        .badge { background:var(--primary-light); color:var(--primary); padding:4px 12px; border-radius:20px; font-size:13px; }
+        .tab-nav { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+        .tab-btn { padding:8px 20px; border:2px solid var(--border); border-radius:20px; background:white; cursor:pointer; font-size:14px; }
+        .tab-btn.active { border-color:var(--primary); background:var(--primary-light); color:var(--primary); }
+        .card { background:var(--white); border-radius:var(--radius); box-shadow:var(--shadow); padding:24px; margin-bottom:20px; }
+        .card h3 { margin-bottom:16px; color:var(--primary); }
+        .form-row { display:flex; gap:12px; }
+        .form-row .form-group { flex:1; }
+        table { width:100%; border-collapse:collapse; }
+        th, td { padding:12px; text-align:left; border-bottom:1px solid var(--border); }
+        th { background:#f9fafb; text-transform:uppercase; font-size:13px; color:var(--gray); }
+        .question-item { border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+        .student-mcq .option { display:block; padding:12px; border:2px solid var(--border); border-radius:8px; margin-bottom:10px; cursor:pointer; }
+        .student-mcq .option.selected { border-color:var(--primary); background:var(--primary-light); }
+        .student-mcq .option.correct { border-color:var(--success); background:#d1fae5; }
+        .student-mcq .option.wrong { border-color:var(--danger); background:#fee2e2; }
+        .score-box { font-size:56px; font-weight:700; color:var(--primary); text-align:center; }
+        .hidden { display:none !important; }
+        @media (max-width:600px) { .form-row { flex-direction:column; } }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Login Screen -->
+        <div id="login-screen" class="login-screen">
+            <div class="login-card">
+                <h1>📚 Let's Go to Learn</h1>
+                <p class="subtitle">MCQ Portal UKG to Class 10</p>
+                <div class="role-select">
+                    <button class="role-btn active" onclick="setRole('teacher')">👩‍🏫 Teacher</button>
+                    <button class="role-btn" onclick="setRole('student')">🎓 Student</button>
+                </div>
+                <div id="login-form">
+                    <input type="text" id="login-username" placeholder="Username">
+                    <input type="password" id="login-password" placeholder="Password">
+                    <button class="btn" onclick="login()">Login</button>
+                </div>
+                <div style="border-top:1px solid #e5e7eb; margin-top:20px; padding-top:20px;">
+                    <h4 style="color:#d97706;">🎒 Student: No Account?</h4>
+                    <input type="text" id="guest-name" placeholder="Your Full Name">
+                    <select id="guest-class"></select>
+                    <button class="btn" style="background:#d97706;" onclick="guestEnter()">Take Test as Guest</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Teacher Panel -->
+        <div id="teacher-panel" class="hidden container">
+            <div class="header">
+                <h2>👩‍🏫 Teacher Dashboard</h2>
+                <div>
+                    <span class="badge">Teacher</span>
+                    <button class="btn btn-sm btn-outline" onclick="logout()">Logout</button>
+                </div>
+            </div>
+            <div class="tab-nav">
+                <button class="tab-btn active" onclick="showTeacherTab('add')">✍️ Add MCQ</button>
+                <button class="tab-btn" onclick="showTeacherTab('pdf')">📄 PDF to MCQ</button>
+                <button class="tab-btn" onclick="showTeacherTab('tests')">📋 Tests</button>
+                <button class="tab-btn" onclick="showTeacherTab('students')">👥 Students</button>
+                <button class="tab-btn" onclick="showTeacherTab('results')">📊 Results</button>
+            </div>
+            <div id="teacher-content"></div>
+        </div>
+
+        <!-- Student Panel -->
+        <div id="student-panel" class="hidden container">
+            <div class="header">
+                <h2>🎓 Student: <span id="student-name-display"></span></h2>
+                <div>
+                    <span class="badge" id="student-class-badge"></span>
+                    <button class="btn btn-sm btn-outline" onclick="logout()">Logout</button>
+                </div>
+            </div>
+            <div id="student-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== GLOBAL STATE ====================
+        let currentUser = null;
+        const classes = ['UKG','1','2','3','4','5','6','7','8','9','10'];
+        const subjects = ['Mathematics','Science','English','Social Studies','Hindi','Computer','General Knowledge'];
+        const api = {
+            login: (d) => fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json()),
+            guest: (d) => fetch('/api/guest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json()),
+            getQuestions: (cls) => fetch('/api/questions'+(cls?`?class=${cls}`:'')).then(r=>r.json()),
+            addQuestion: (d) => fetch('/api/questions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json()),
+            deleteQuestion: (id) => fetch('/api/questions/'+id,{method:'DELETE'}),
+            getTests: (cls) => fetch('/api/tests'+(cls?`?class=${cls}`:'')).then(r=>r.json()),
+            createTest: (d) => fetch('/api/tests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json()),
+            deleteTest: (id) => fetch('/api/tests/'+id,{method:'DELETE'}),
+            getStudents: () => fetch('/api/students').then(r=>r.json()),
+            addStudent: (d) => fetch('/api/students',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json()),
+            deleteStudent: (i) => fetch('/api/students/'+i,{method:'DELETE'}),
+            getResults: () => fetch('/api/results').then(r=>r.json()),
+            submitResult: (d) => fetch('/api/results',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json()),
+            pdfToMCQ: (d) => fetch('/api/pdf-to-mcq',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json())
+        };
+
+        // Populate guest class dropdown
+        document.getElementById('guest-class').innerHTML = classes.map(c => `<option value="${c}">Class ${c}</option>`).join('');
+
+        let selectedRole = 'teacher';
+        function setRole(role) {
+            selectedRole = role;
+            document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        async function login() {
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+            if (!username || !password) return alert('Enter credentials');
+            const res = await api.login({ username, password, role: selectedRole });
+            if (res.success) {
+                currentUser = res;
+                if (res.role === 'teacher') showTeacherPanel();
+                else showStudentPanel();
+            } else alert(res.message);
+        }
+
+        async function guestEnter() {
+            const name = document.getElementById('guest-name').value.trim();
+            const cls = document.getElementById('guest-class').value;
+            if (!name) return alert('Enter name');
+            const res = await api.guest({ name, class: cls });
+            if (res.success) {
+                currentUser = { role:'student', name: res.name, class: res.class, guestId: res.guestId, isGuest: true };
+                showStudentPanel();
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('teacher-panel').classList.add('hidden');
+            document.getElementById('student-panel').classList.add('hidden');
+        }
+
+        // ==================== TEACHER PANEL ====================
+        function showTeacherPanel() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('teacher-panel').classList.remove('hidden');
+            document.getElementById('student-panel').classList.add('hidden');
+            showTeacherTab('add');
+        }
+
+        async function showTeacherTab(tab) {
+            // Highlight active tab
+            document.querySelectorAll('#teacher-panel .tab-btn').forEach((b,i) => {
+                b.classList.toggle('active', i === ['add','pdf','tests','students','results'].indexOf(tab));
+            });
+            const content = document.getElementById('teacher-content');
+            if (tab === 'add') {
+                content.innerHTML = `
+                    <div class="card">
+                        <h3>Add MCQ Manually</h3>
+                        <div class="form-row">
+                            <div class="form-group"><label>Class</label><select id="q-class">${classes.map(c=>`<option>${c}</option>`).join('')}</select></div>
+                            <div class="form-group"><label>Subject</label><select id="q-subject">${subjects.map(s=>`<option>${s}</option>`).join('')}</select></div>
+                        </div>
+                        <textarea id="q-text" placeholder="Question"></textarea>
+                        <div class="form-row">
+                            <input id="q-a" placeholder="Option A">
+                            <input id="q-b" placeholder="Option B">
+                        </div>
+                        <div class="form-row">
+                            <input id="q-c" placeholder="Option C">
+                            <input id="q-d" placeholder="Option D">
+                        </div>
+                        <select id="q-answer"><option value="a">A</option><option value="b">B</option><option value="c">C</option><option value="d">D</option></select>
+                        <button class="btn" onclick="addQuestion()">Add Question</button>
+                    </div>`;
+            } else if (tab === 'pdf') {
+                content.innerHTML = `
+                    <div class="card">
+                        <h3>PDF Text to MCQ</h3>
+                        <div class="form-row">
+                            <div class="form-group"><label>Class</label><select id="pdf-class">${classes.map(c=>`<option>${c}</option>`).join('')}</select></div>
+                            <div class="form-group"><label>Subject</label><select id="pdf-subject">${subjects.map(s=>`<option>${s}</option>`).join('')}</select></div>
+                            <div class="form-group"><label>Questions</label><input type="number" id="pdf-num" value="5" min="1" max="20"></div>
+                        </div>
+                        <input type="text" id="pdf-test-name" placeholder="Test Name (optional)">
+                        <textarea id="pdf-text" rows="8" placeholder="Paste text from PDF here..."></textarea>
+                        <button class="btn" onclick="pdfToMCQ()">Generate MCQs & Create Test</button>
+                        <div id="pdf-result"></div>
+                    </div>`;
+            } else if (tab === 'tests') {
+                const tests = await api.getTests();
+                let html = '<div class="card"><h3>All Tests</h3>';
+                tests.forEach(t => {
+                    html += `<div class="question-item"><div><strong>${t.name}</strong> (Class ${t.class}, ${t.subject}) - ${t.questionIds.length} Qs</div><button class="btn btn-sm btn-danger" onclick="deleteTest(${t.id})">Delete</button></div>`;
+                });
+                html += `<hr><h4>Create New Test</h4>
+                    <div class="form-row">
+                        <select id="test-class"><option value="">Select Class</option>${classes.map(c=>`<option>${c}</option>`).join('')}</select>
+                        <select id="test-subject"><option value="">Select Subject</option>${subjects.map(s=>`<option>${s}</option>`).join('')}</select>
+                        <input type="text" id="test-name" placeholder="Test Name (e.g., Test 1)">
+                    </div>
+                    <div id="test-question-checkboxes"></div>
+                    <button class="btn" onclick="createTest()">Create Test</button>`;
+                content.innerHTML = html;
+                document.getElementById('test-class').onchange = loadTestCheckboxes;
+                document.getElementById('test-subject').onchange = loadTestCheckboxes;
+                loadTestCheckboxes();
+            } else if (tab === 'students') {
+                const students = await api.getStudents();
+                let html = '<div class="card"><h3>Registered Students</h3>';
+                students.forEach((s,i) => {
+                    html += `<div class="question-item"><div>${s.name} (${s.username}) - Class ${s.class}</div><button class="btn btn-sm btn-danger" onclick="deleteStudent(${i})">Remove</button></div>`;
+                });
+                html += `<hr><h4>Add Student</h4><input id="s-name" placeholder="Name"><select id="s-class">${classes.map(c=>`<option>${c}</option>`).join('')}</select><input id="s-pass" placeholder="Password"><button class="btn" onclick="addStudent()">Add</button>`;
+                content.innerHTML = html;
+            } else if (tab === 'results') {
+                const results = await api.getResults();
+                let html = '<div class="card"><h3>Test Results</h3><table><tr><th>Student</th><th>Test</th><th>Score</th><th>Date</th></tr>';
+                results.reverse().forEach(r => {
+                    const name = r.guestName || r.studentName || 'Unknown';
+                    html += `<tr><td>${name}</td><td>${r.testName}</td><td>${r.score}/${r.total}</td><td>${new Date(r.date).toLocaleDateString()}</td></tr>`;
+                });
+                html += '</table></div>';
+                content.innerHTML = html;
+            }
+        }
+
+        async function addQuestion() {
+            const data = {
+                class: document.getElementById('q-class').value,
+                subject: document.getElementById('q-subject').value,
+                question: document.getElementById('q-text').value,
+                optionA: document.getElementById('q-a').value,
+                optionB: document.getElementById('q-b').value,
+                optionC: document.getElementById('q-c').value,
+                optionD: document.getElementById('q-d').value,
+                correctAnswer: document.getElementById('q-answer').value
+            };
+            await api.addQuestion(data);
+            alert('Question added');
+            showTeacherTab('add');
+        }
+
+        async function pdfToMCQ() {
+            const data = {
+                text: document.getElementById('pdf-text').value,
+                class: document.getElementById('pdf-class').value,
+                subject: document.getElementById('pdf-subject').value,
+                numQuestions: parseInt(document.getElementById('pdf-num').value),
+                testName: document.getElementById('pdf-test-name').value
+            };
+            const res = await api.pdfToMCQ(data);
+            if (res.success) {
+                document.getElementById('pdf-result').innerHTML = `<p style="color:green">✅ Created test "${res.test.name}" with ${res.questions.length} questions.</p>`;
+            } else {
+                document.getElementById('pdf-result').innerHTML = `<p style="color:red">Error: ${res.message}</p>`;
+            }
+        }
+
+        async function loadTestCheckboxes() {
+            const cls = document.getElementById('test-class').value;
+            const sub = document.getElementById('test-subject').value;
+            if (!cls || !sub) return;
+            const questions = await api.getQuestions(cls);
+            const filtered = questions.filter(q => q.subject === sub);
+            document.getElementById('test-question-checkboxes').innerHTML = filtered.map(q => 
+                `<label><input type="checkbox" value="${q.id}"> ${q.question}</label><br>`
+            ).join('');
+        }
+
+        async function createTest() {
+            const name = document.getElementById('test-name').value.trim();
+            if (!name) return alert('Enter test name');
+            const checked = [...document.querySelectorAll('#test-question-checkboxes input:checked')].map(cb => parseInt(cb.value));
+            if (checked.length === 0) return alert('Select at least one question');
+            const data = {
+                class: document.getElementById('test-class').value,
+                subject: document.getElementById('test-subject').value,
+                name,
+                questionIds: checked
+            };
+            await api.createTest(data);
+            showTeacherTab('tests');
+        }
+
+        async function deleteTest(id) {
+            await api.deleteTest(id);
+            showTeacherTab('tests');
+        }
+
+        async function addStudent() {
+            const name = document.getElementById('s-name').value.trim();
+            const pass = document.getElementById('s-pass').value.trim();
+            const cls = document.getElementById('s-class').value;
+            if (!name || !pass) return alert('Fill all fields');
+            const res = await api.addStudent({ name, class: cls, password: pass });
+            alert(`Student added! Username: ${res.username}, Password: ${res.password}`);
+            showTeacherTab('students');
+        }
+
+        async function deleteStudent(idx) {
+            await api.deleteStudent(idx);
+            showTeacherTab('students');
+        }
+
+        // ==================== STUDENT PANEL ====================
+        async function showStudentPanel() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('teacher-panel').classList.add('hidden');
+            document.getElementById('student-panel').classList.remove('hidden');
+            document.getElementById('student-name-display').textContent = currentUser.name;
+            document.getElementById('student-class-badge').textContent = 'Class ' + currentUser.class;
+            loadStudentTests();
+        }
+
+        async function loadStudentTests() {
+            const tests = await api.getTests(currentUser.class);
+            let html = '<div class="card"><h3>Available Tests</h3>';
+            if (tests.length === 0) {
+                html += '<p>No tests available for your class.</p>';
+            } else {
+                const subjectsSet = [...new Set(tests.map(t => t.subject))];
+                subjectsSet.forEach(sub => {
+                    html += `<h4>${sub}</h4>`;
+                    tests.filter(t => t.subject === sub).forEach(t => {
+                        html += `<div class="question-item"><div><strong>${t.name}</strong> (${t.questionIds.length} Qs)</div><button class="btn btn-sm" onclick="startTest(${t.id})">Start</button></div>`;
+                    });
+                });
+            }
+            html += '<button class="btn btn-outline" onclick="viewMyResults()">📊 My Results</button><div id="my-results"></div></div>';
+            document.getElementById('student-content').innerHTML = html;
+        }
+
+        let currentTest = null;
+        let selectedAnswers = {};
+
+        async function startTest(testId) {
+            const tests = await api.getTests();
+            const test = tests.find(t => t.id === testId);
+            if (!test) return alert('Test not found');
+            const questions = await api.getQuestions();
+            const testQuestions = test.questionIds.map(id => questions.find(q => q.id === id)).filter(q => q);
+            currentTest = test;
+            selectedAnswers = {};
+            let html = `<h3>${test.name}</h3>`;
+            testQuestions.forEach((q, i) => {
+                html += `<div class="card student-mcq"><p><strong>Q${i+1}. ${q.question}</strong></p>`;
+                ['a','b','c','d'].forEach(opt => {
+                    html += `<div class="option" onclick="selectAnswer(${q.id}, '${opt}')" id="opt-${q.id}-${opt}">${opt.toUpperCase()}) ${q['option'+opt.toUpperCase()]}</div>`;
+                });
+                html += `</div>`;
+            });
+            html += `<button class="btn" onclick="submitTest()">Submit Test</button>`;
+            document.getElementById('student-content').innerHTML = html;
+        }
+
+        function selectAnswer(qid, opt) {
+            // Deselect previous
+            const prev = document.querySelector(`.option.selected[data-qid="${qid}"]`);
+            if (prev) prev.classList.remove('selected');
+            const current = document.getElementById(`opt-${qid}-${opt}`);
+            if (current) {
+                current.classList.add('selected');
+                current.setAttribute('data-qid', qid);
+            }
+            selectedAnswers[qid] = opt;
+        }
+
+        async function submitTest() {
+            if (Object.keys(selectedAnswers).length === 0) return alert('Answer at least one question');
+            const questions = await api.getQuestions();
+            const testQuestions = currentTest.questionIds.map(id => questions.find(q => q.id === id)).filter(q => q);
+            let score = 0;
+            testQuestions.forEach(q => {
+                if (selectedAnswers[q.id] === q.correctAnswer) score++;
+            });
+            const result = {
+                testId: currentTest.id,
+                studentUsername: currentUser.isGuest ? null : currentUser.username,
+                studentName: currentUser.isGuest ? null : currentUser.name,
+                guestName: currentUser.isGuest ? currentUser.name : null,
+                guestClass: currentUser.isGuest ? currentUser.class : null,
+                studentClass: currentUser.isGuest ? null : currentUser.class,
+                score,
+                total: testQuestions.length,
+                testName: currentTest.name
+            };
+            await api.submitResult(result);
+            // Show score
+            document.getElementById('student-content').innerHTML = `
+                <div class="card" style="text-align:center;">
+                    <h2>Test Complete!</h2>
+                    <div class="score-box">${score}/${testQuestions.length}</div>
+                    <p style="font-size:20px;">${Math.round(score/testQuestions.length*100)}%</p>
+                    <button class="btn" onclick="loadStudentTests()">Back to Tests</button>
+                </div>`;
+        }
+
+        async function viewMyResults() {
+            const results = await api.getResults();
+            let myResults;
+            if (currentUser.isGuest) {
+                myResults = results.filter(r => r.guestName === currentUser.name && r.guestClass === currentUser.class);
+            } else {
+                myResults = results.filter(r => r.studentUsername === currentUser.username);
+            }
+            const container = document.getElementById('my-results');
+            if (myResults.length === 0) {
+                container.innerHTML = '<p>No results yet.</p>';
+                return;
+            }
+            let html = '<table><tr><th>Test</th><th>Score</th><th>Date</th></tr>';
+            myResults.reverse().forEach(r => {
+                html += `<tr><td>${r.testName}</td><td>${r.score}/${r.total}</td><td>${new Date(r.date).toLocaleDateString()}</td></tr>`;
+            });
+            html += '</table>';
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
